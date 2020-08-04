@@ -85,11 +85,21 @@ class MessageFieldGenerator: FieldGeneratorBase, FieldGenerator {
     func generateStorage(printer p: inout CodePrinter) {
         let defaultValue = hasFieldPresence ? "nil" : swiftDefaultValue
         if usesHeapStorage {
-            p.print("var \(underscoreSwiftName): \(swiftStorageType) = \(defaultValue)\n")
+            if fieldDescriptor.type == .double || fieldDescriptor.type == .float {
+                p.print("var \(underscoreSwiftName): \(swiftStorageType) = \(defaultValue)\n")
+                p.print("var \(underscoreSwiftName)Val: NSNumber = NSNumber(value: \(defaultValue))\n")
+            } else {
+                p.print("var \(underscoreSwiftName): \(swiftStorageType) = \(defaultValue)\n")
+            }
         } else {
           // If this field has field presence, the there is a private storage variable.
           if hasFieldPresence {
-              p.print("fileprivate var \(underscoreSwiftName): \(swiftStorageType) = \(defaultValue)\n")
+            if fieldDescriptor.type == .double || fieldDescriptor.type == .float {
+                p.print("fileprivate var \(underscoreSwiftName): \(swiftStorageType) = \(defaultValue)\n")
+                p.print("fileprivate var \(underscoreSwiftName)Val: NSNumber = NSNumber(value: \(defaultValue))\n")
+            } else {
+                p.print("fileprivate var \(underscoreSwiftName): \(swiftStorageType) = \(defaultValue)\n")
+            }
           }
         }
     }
@@ -100,26 +110,68 @@ class MessageFieldGenerator: FieldGeneratorBase, FieldGenerator {
         p.print("\n", comments)
 
         if usesHeapStorage {
-            p.print(
-              "\(visibility)var \(swiftName): \(swiftType) {\n")
-            p.indent()
-            let defaultClause = hasFieldPresence ? " ?? \(swiftDefaultValue)" : ""
-            p.print(
-              "get {return _storage.\(underscoreSwiftName)\(defaultClause)}\n",
-              "set {_uniqueStorage().\(underscoreSwiftName) = newValue}\n")
-            p.outdent()
-            p.print("}\n")
-        } else {
-            if hasFieldPresence {
+            if fieldDescriptor.type == .double || fieldDescriptor.type == .float {
                 p.print("\(visibility)var \(swiftName): \(swiftType) {\n")
                 p.indent()
+                let defaultClause = hasFieldPresence ? " ?? \(swiftDefaultValue)" : ""
                 p.print(
-                  "get {return \(underscoreSwiftName) ?? \(swiftDefaultValue)}\n",
-                  "set {\(underscoreSwiftName) = newValue}\n")
+                    "get {return _storage.\(underscoreSwiftName)\(defaultClause)}\n",
+                    "set {_uniqueStorage().\(underscoreSwiftName) = newValue}\n")
+                p.outdent()
+                p.print("}\n")
+
+                p.print("\(visibility)var \(swiftName)Val: NSNumber {\n")
+                p.indent()
+
+                p.print(
+                    "get {return _storage.\(underscoreSwiftName)Val\(defaultClause)}\n",
+                    "set {_uniqueStorage().\(underscoreSwiftName)Val = newValue}\n")
                 p.outdent()
                 p.print("}\n")
             } else {
-                p.print("\(visibility)var \(swiftName): \(swiftStorageType) = \(swiftDefaultValue)\n")
+                p.print("\(visibility)var \(swiftName): \(swiftType) {\n")
+                p.indent()
+                let defaultClause = hasFieldPresence ? " ?? \(swiftDefaultValue)" : ""
+                p.print(
+                    "get {return _storage.\(underscoreSwiftName)\(defaultClause)}\n",
+                    "set {_uniqueStorage().\(underscoreSwiftName) = newValue}\n")
+                p.outdent()
+                p.print("}\n")
+            }
+        } else {
+            if fieldDescriptor.type == .double || fieldDescriptor.type == .float {
+                if hasFieldPresence {
+                    p.print("\(visibility)var \(swiftName): \(swiftType) {\n")
+                    p.indent()
+                    p.print(
+                        "get {return \(underscoreSwiftName) ?? \(swiftDefaultValue)}\n",
+                        "set {\(underscoreSwiftName) = newValue}\n")
+                    p.outdent()
+                    p.print("}\n")
+
+                    p.print("\(visibility)var \(swiftName)Val: NSNumber {\n")
+                    p.indent()
+                    p.print(
+                        "get {return \(underscoreSwiftName)Val ?? \(swiftDefaultValue)}\n",
+                        "set {\(underscoreSwiftName)Val = newValue}\n")
+                    p.outdent()
+                    p.print("}\n")
+                } else {
+                    p.print("\(visibility)var \(swiftName): \(swiftStorageType) = \(swiftDefaultValue)\n")
+                    p.print("\(visibility)var \(swiftName)Val: NSNumber = NSNumber(value: \(swiftDefaultValue))\n")
+                }
+            } else {
+                if hasFieldPresence {
+                    p.print("\(visibility)var \(swiftName): \(swiftType) {\n")
+                    p.indent()
+                    p.print(
+                        "get {return \(underscoreSwiftName) ?? \(swiftDefaultValue)}\n",
+                        "set {\(underscoreSwiftName) = newValue}\n")
+                    p.outdent()
+                    p.print("}\n")
+                } else {
+                    p.print("\(visibility)var \(swiftName): \(swiftStorageType) = \(swiftDefaultValue)\n")
+                }
             }
         }
 
@@ -137,7 +189,12 @@ class MessageFieldGenerator: FieldGeneratorBase, FieldGenerator {
     }
 
     func generateStorageClassClone(printer p: inout CodePrinter) {
-        p.print("\(underscoreSwiftName) = source.\(underscoreSwiftName)\n")
+        if fieldDescriptor.type == .double || fieldDescriptor.type == .float {
+            p.print("\(underscoreSwiftName) = source.\(underscoreSwiftName)\n")
+            p.print("\(underscoreSwiftName)Val = source.\(underscoreSwiftName)Val\n")
+        } else {
+            p.print("\(underscoreSwiftName) = source.\(underscoreSwiftName)\n")
+        }
     }
 
     func generateFieldComparison(printer p: inout CodePrinter) {
@@ -182,7 +239,11 @@ class MessageFieldGenerator: FieldGeneratorBase, FieldGenerator {
         }
 
         if fieldDescriptor.type == .double || fieldDescriptor.type == .float {
-            p.print("case \(number): \(storedProperty) = NSNumber(value: (try decoder.\(decoderMethod)(\(traitsArg)value: &\(storedProperty))))\n")
+            p.print("case \(number):\n")
+            p.indent()
+            p.print("try decoder.\(decoderMethod)(\(traitsArg)value: &\(storedProperty))\n")
+            p.print("\(storedProperty)Val = NSNumber(value: \(storedProperty))\n")
+            p.outdent()
         } else {
             p.print("case \(number): try decoder.\(decoderMethod)(\(traitsArg)value: &\(storedProperty))\n")
         }
@@ -221,13 +282,7 @@ class MessageFieldGenerator: FieldGeneratorBase, FieldGenerator {
 
         p.print("if \(conditional) {\n")
         p.indent()
-
-        if fieldDescriptor.type == .double || fieldDescriptor.type == .float {
-            p.print("try visitor.\(visitMethod)(\(traitsArg)value: \(varName).\(fieldDescriptor.protoGenericType.lowercased())Value, fieldNumber: \(number))\n")
-        } else {
-            p.print("try visitor.\(visitMethod)(\(traitsArg)value: \(varName), fieldNumber: \(number))\n")
-        }
-
+        p.print("try visitor.\(visitMethod)(\(traitsArg)value: \(varName), fieldNumber: \(number))\n")
         p.outdent()
         p.print("}\n")
     }
