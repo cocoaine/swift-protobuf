@@ -331,9 +331,16 @@ class OneofGenerator {
               "var v: \(field.swiftType)?\n")
         }
 
-        p.print(
-          "try decoder.decodeSingular\(field.protoGenericType)Field(value: &v)\n",
-          "if let v = v {\(storedProperty) = \(field.dottedSwiftName)(v)}\n")
+        if field.fieldDescriptor.type == .double || field.fieldDescriptor.type == .float {
+          p.print(
+            "v = NSNumber(value: (try decoder.decodeSingular\(field.protoGenericType)Field(value: &v)))\n",
+            "if let v = v {\(storedProperty) = \(field.dottedSwiftName)(v)}\n")
+        } else {
+          p.print(
+            "try decoder.decodeSingular\(field.protoGenericType)Field(value: &v)\n",
+            "if let v = v {\(storedProperty) = \(field.dottedSwiftName)(v)}\n")
+        }
+
         p.outdent()
     }
 
@@ -345,14 +352,22 @@ class OneofGenerator {
         if group.count == 1 {
             p.print("if case \(field.dottedSwiftName)(let v)? = \(storedProperty) {\n")
             p.indent()
-            p.print("try visitor.visitSingular\(field.protoGenericType)Field(value: v, fieldNumber: \(field.number))\n")
+            if field.fieldDescriptor.type == .double || field.fieldDescriptor.type == .float {
+              p.print("try visitor.visitSingular\(field.protoGenericType)Field(value: v.\(field.protoGenericType.lowercased())Value, fieldNumber: \(field.number))\n")
+            } else {
+              p.print("try visitor.visitSingular\(field.protoGenericType)Field(value: v, fieldNumber: \(field.number))\n")
+            }
             p.outdent()
         } else {
             p.print("switch \(storedProperty) {\n")
             for f in group {
                 p.print("case \(f.dottedSwiftName)(let v)?:\n")
                 p.indent()
-                p.print("try visitor.visitSingular\(f.protoGenericType)Field(value: v, fieldNumber: \(f.number))\n")
+                if f.fieldDescriptor.type == .double || f.fieldDescriptor.type == .float {
+                  p.print("try visitor.visitSingular\(f.protoGenericType)Field(value: v.\(field.protoGenericType.lowercased())Value, fieldNumber: \(f.number))\n")
+                } else {
+                  p.print("try visitor.visitSingular\(f.protoGenericType)Field(value: v, fieldNumber: \(f.number))\n")
+                }
                 p.outdent()
             }
             p.print("case nil: break\n")  // Cover not being set.

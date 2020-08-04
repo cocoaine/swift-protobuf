@@ -181,7 +181,11 @@ class MessageFieldGenerator: FieldGeneratorBase, FieldGenerator {
             traitsArg = ""
         }
 
-        p.print("case \(number): try decoder.\(decoderMethod)(\(traitsArg)value: &\(storedProperty))\n")
+        if fieldDescriptor.type == .double || fieldDescriptor.type == .float {
+            p.print("case \(number): \(storedProperty) = NSNumber(value: (try decoder.\(decoderMethod)(\(traitsArg)value: &\(storedProperty))))\n")
+        } else {
+            p.print("case \(number): try decoder.\(decoderMethod)(\(traitsArg)value: &\(storedProperty))\n")
+        }
     }
 
     func generateTraverse(printer p: inout CodePrinter) {
@@ -217,7 +221,13 @@ class MessageFieldGenerator: FieldGeneratorBase, FieldGenerator {
 
         p.print("if \(conditional) {\n")
         p.indent()
-        p.print("try visitor.\(visitMethod)(\(traitsArg)value: \(varName), fieldNumber: \(number))\n")
+
+        if fieldDescriptor.type == .double || fieldDescriptor.type == .float {
+            p.print("try visitor.\(visitMethod)(\(traitsArg)value: \(varName).\(fieldDescriptor.protoGenericType.lowercased())Value, fieldNumber: \(number))\n")
+        } else {
+            p.print("try visitor.\(visitMethod)(\(traitsArg)value: \(varName), fieldNumber: \(number))\n")
+        }
+
         p.outdent()
         p.print("}\n")
     }

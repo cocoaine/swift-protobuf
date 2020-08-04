@@ -104,8 +104,8 @@ extension FieldDescriptor {
 
     let result: String
     switch type {
-    case .double: result = "Double"
-    case .float: result = "Float"
+    case .double: result = "NSNumber"
+    case .float: result = "NSNumber"
     case .int64: result = "Int64"
     case .uint64: result = "UInt64"
     case .int32: result = "Int32"
@@ -184,16 +184,16 @@ extension FieldDescriptor {
       switch type {
       case .double:
         switch defaultValue {
-        case "inf": return "Double.infinity"
-        case "-inf": return "-Double.infinity"
-        case "nan": return "Double.nan"
+        case "inf": return "NSNumber(value: Double.infinity)"
+        case "-inf": return "NSNumber(value: -Double.infinity)"
+        case "nan": return "NSNumber(value: Double.nan)"
         default: return defaultValue
         }
       case .float:
         switch defaultValue {
-        case "inf": return "Float.infinity"
-        case "-inf": return "-Float.infinity"
-        case "nan": return "Float.nan"
+        case "inf": return "NSNumber(value: Float.infinity)"
+        case "-inf": return "NSNumber(value: -Float.infinity)"
+        case "nan": return "NSNumber(value: Float.nan)"
         default: return defaultValue
         }
       case .string:
@@ -216,6 +216,8 @@ extension FieldDescriptor {
       return namer.fullName(message: messageType) + "()"
     case .enum:
       return namer.dottedRelativeName(enumValue: enumType.defaultValue)
+    case .double, .float:
+      return "NSNumber(value: 0)"
     default:
       return "0"
     }
